@@ -8,7 +8,18 @@ import { useRouter } from 'next/navigation';
 export default function PengajuanForm({ tawaranTopik }: { tawaranTopik: any[] }) {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState('');
+  const [judul, setJudul] = useState('');
   const router = useRouter();
+
+  function handleTopikChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const selectedId = e.target.value;
+    if (selectedId) {
+      const selectedTopik = tawaranTopik.find(t => t.id.toString() === selectedId);
+      if (selectedTopik) {
+        setJudul(selectedTopik.judulTopik);
+      }
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,6 +52,8 @@ export default function PengajuanForm({ tawaranTopik }: { tawaranTopik: any[] })
           type="text"
           name="judul"
           required
+          value={judul}
+          onChange={(e) => setJudul(e.target.value)}
           placeholder="Masukkan judul tugas akhir Anda"
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         />
@@ -52,6 +65,7 @@ export default function PengajuanForm({ tawaranTopik }: { tawaranTopik: any[] })
         </label>
         <select 
           name="tawaranTopikId"
+          onChange={handleTopikChange}
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="">-- Pilih Topik (Jika Mengambil Dari Dosen) --</option>
