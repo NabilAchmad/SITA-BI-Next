@@ -1,0 +1,361 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  name            String
+  email           String    @unique
+  emailVerifiedAt DateTime?
+  password        String
+  rememberToken   String?
+  photo           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  mahasiswa            Mahasiswa?
+  dosen                Dosen?
+  pengumuman           Pengumuman[]
+  logs                 Log[]
+  dokumenDivalidasi    DokumenTa[]            @relation("DivOleh")
+  dokumenDivalidasiP1  DokumenTa[]            @relation("DivOlehP1")
+  dokumenDivalidasiP2  DokumenTa[]            @relation("DivOlehP2")
+  similarityChecked    SimilarityCheck[]
+  tawaranTopik         TawaranTopik[]
+  beritaAcaraPraSidang BeritaAcaraPraSidang[]
+  taDisetujui          TugasAkhir[]           @relation("TaDisetujui")
+  taDitolak            TugasAkhir[]           @relation("TaDitolak")
+}
+
+model Mahasiswa {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nim       String   @unique @db.VarChar(50)
+  prodi     String
+  angkatan  String   @db.VarChar(10)
+  kelas     String
+  status    String   @default("aktif")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tugasAkhir    TugasAkhir[]
+  historyTopik  HistoryTopikMahasiswa[]
+  historyJadwal HistoryPerubahanJadwal[]
+}
+
+model Dosen {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nidn      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  peranDosenTa  PeranDosenTa[]
+  nilaiSidang   NilaiSidang[]
+  reviewDokumen ReviewDokumenTa[]
+  bimbinganTa   BimbinganTa[]
+}
+
+model TawaranTopik {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  judulTopik String   @db.VarChar(255)
+  deskripsi  String   @db.Text
+  kuota      Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  historyTopik HistoryTopikMahasiswa[]
+  tugasAkhir   TugasAkhir[]
+}
+
+model TugasAkhir {
+  id               Int           @id @default(autoincrement())
+  mahasiswaId      Int
+  mahasiswa        Mahasiswa     @relation(fields: [mahasiswaId], references: [id], onDelete: Cascade)
+  tawaranTopikId   Int?
+  tawaranTopik     TawaranTopik? @relation(fields: [tawaranTopikId], references: [id], onDelete: SetNull)
+  judul            String        @db.VarChar(255)
+  status           String        @default("diajukan")
+  alasanPembatalan String?       @db.Text
+  tanggalPengajuan DateTime      @db.Date
+  filePath         String?
+  similarityScore  Float?
+  alasanPenolakan  String?       @db.Text
+  terakhirDicek    DateTime?
+  disetujuiOlehId  Int?
+  disetujuiOleh    User?         @relation("TaDisetujui", fields: [disetujuiOlehId], references: [id], onDelete: SetNull)
+  ditolakOlehId    Int?
+  ditolakOleh      User?         @relation("TaDitolak", fields: [ditolakOlehId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  peranDosenTa      PeranDosenTa[]
+  sidang            Sidang[]
+  dokumenTa         DokumenTa[]
+  bimbinganTa       BimbinganTa[]
+  pendaftaranSidang PendaftaranSidang[]
+}
+
+model HistoryTopikMahasiswa {
+  id             Int          @id @default(autoincrement())
+  mahasiswaId    Int
+  mahasiswa      Mahasiswa    @relation(fields: [mahasiswaId], references: [id], onDelete: Cascade)
+  tawaranTopikId Int
+  tawaranTopik   TawaranTopik @relation(fields: [tawaranTopikId], references: [id], onDelete: Cascade)
+  status         String       @default("diajukan")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model PeranDosenTa {
+  id                Int        @id @default(autoincrement())
+  dosenId           Int
+  dosen             Dosen      @relation(fields: [dosenId], references: [id], onDelete: Cascade)
+  tugasAkhirId      Int
+  tugasAkhir        TugasAkhir @relation(fields: [tugasAkhirId], references: [id], onDelete: Cascade)
+  peran             String
+  setujuPembatalan  String?
+  tanggalVerifikasi DateTime?
+  catatanVerifikasi String?    @db.Text
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model PendaftaranSidang {
+  id                 Int        @id @default(autoincrement())
+  tugasAkhirId       Int
+  tugasAkhir         TugasAkhir @relation(fields: [tugasAkhirId], references: [id], onDelete: Cascade)
+  statusVerifikasi   String     @default("menunggu_verifikasi")
+  statusPembimbing1  String     @default("menunggu")
+  statusPembimbing2  String     @default("menunggu")
+  catatanAdmin       String?    @db.Text
+  catatanPembimbing1 String?    @db.Text
+  catatanPembimbing2 String?    @db.Text
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  sidang Sidang[]
+}
+
+model Sidang {
+  id                  Int                @id @default(autoincrement())
+  tugasAkhirId        Int
+  tugasAkhir          TugasAkhir         @relation(fields: [tugasAkhirId], references: [id], onDelete: Cascade)
+  pendaftaranSidangId Int?
+  pendaftaranSidang   PendaftaranSidang? @relation(fields: [pendaftaranSidangId], references: [id], onDelete: SetNull)
+  jenisSidang         String             @default("akhir")
+  statusHasil         String             @default("menunggu_penjadwalan")
+  isActive            Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  jadwalSidang     JadwalSidang[]
+  nilaiSidang      NilaiSidang[]
+  beritaAcaraPasca BeritaAcaraPascaSidang[]
+  beritaAcaraPra   BeritaAcaraPraSidang[]
+}
+
+model Ruangan {
+  id          Int      @id @default(autoincrement())
+  namaRuangan String   @db.VarChar(100)
+  lokasi      String   @db.VarChar(255)
+  kapasitas   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jadwalSidang JadwalSidang[]
+}
+
+model JadwalSidang {
+  id           Int      @id @default(autoincrement())
+  sidangId     Int
+  sidang       Sidang   @relation(fields: [sidangId], references: [id], onDelete: Cascade)
+  tanggal      DateTime @db.Date
+  waktuMulai   DateTime @db.Time
+  waktuSelesai DateTime @db.Time
+  ruanganId    Int
+  ruangan      Ruangan  @relation(fields: [ruanganId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model NilaiSidang {
+  id        Int      @id @default(autoincrement())
+  sidangId  Int
+  sidang    Sidang   @relation(fields: [sidangId], references: [id], onDelete: Cascade)
+  dosenId   Int
+  dosen     Dosen    @relation(fields: [dosenId], references: [id], onDelete: Cascade)
+  aspek     String   @db.VarChar(100)
+  komentar  String?  @db.Text
+  skor      Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BeritaAcaraPascaSidang {
+  id          Int      @id @default(autoincrement())
+  sidangId    Int
+  sidang      Sidang   @relation(fields: [sidangId], references: [id], onDelete: Cascade)
+  kesimpulan  String   @db.Text
+  hasilSidang String
+  catatan     String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BeritaAcaraPraSidang {
+  id            Int      @id @default(autoincrement())
+  sidangId      Int
+  sidang        Sidang   @relation(fields: [sidangId], references: [id], onDelete: Cascade)
+  dicetakOlehId Int
+  dicetakOleh   User     @relation(fields: [dicetakOlehId], references: [id], onDelete: Cascade)
+  tanggalCetak  DateTime
+  statusDokumen String
+  filePath      String   @db.VarChar(255)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DokumenTa {
+  id                 Int        @id @default(autoincrement())
+  tugasAkhirId       Int
+  tugasAkhir         TugasAkhir @relation(fields: [tugasAkhirId], references: [id])
+  tipeDokumen        String
+  statusValidasi     String     @default("belum_diperiksa")
+  divalidasiOlehId   Int?
+  divalidasiOleh     User?      @relation("DivOleh", fields: [divalidasiOlehId], references: [id], onDelete: SetNull)
+  divalidasiOlehP1Id Int?
+  divalidasiOlehP1   User?      @relation("DivOlehP1", fields: [divalidasiOlehP1Id], references: [id], onDelete: SetNull)
+  divalidasiOlehP2Id Int?
+  divalidasiOlehP2   User?      @relation("DivOlehP2", fields: [divalidasiOlehP2Id], references: [id], onDelete: SetNull)
+  filePath           String
+  version            Int        @default(1)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  reviewDokumen   ReviewDokumenTa[]
+  similarityCheck SimilarityCheck[]
+}
+
+model ReviewDokumenTa {
+  id           Int       @id @default(autoincrement())
+  dokumenTaId  Int
+  dokumenTa    DokumenTa @relation(fields: [dokumenTaId], references: [id])
+  reviewerId   Int
+  reviewer     Dosen     @relation(fields: [reviewerId], references: [id])
+  statusReview String
+  catatan      String?   @db.Text
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Pengumuman {
+  id            Int      @id @default(autoincrement())
+  judul         String
+  isi           String   @db.Text
+  dibuatOlehId  Int
+  dibuatOleh    User     @relation(fields: [dibuatOlehId], references: [id])
+  audiens       String
+  tanggalDibuat DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model BimbinganTa {
+  id               Int        @id @default(autoincrement())
+  tugasAkhirId     Int
+  tugasAkhir       TugasAkhir @relation(fields: [tugasAkhirId], references: [id])
+  dosenId          Int
+  dosen            Dosen      @relation(fields: [dosenId], references: [id])
+  peran            String
+  sesiKe           Int?
+  tanggalBimbingan DateTime?  @db.Date
+  jamBimbingan     DateTime?  @db.Time
+  statusBimbingan  String
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  catatanBimbingan CatatanBimbingan[]
+  historyJadwal    HistoryPerubahanJadwal[]
+}
+
+model CatatanBimbingan {
+  id            Int         @id @default(autoincrement())
+  bimbinganTaId Int
+  bimbinganTa   BimbinganTa @relation(fields: [bimbinganTaId], references: [id], onDelete: Cascade)
+  authorType    String
+  authorId      Int
+  catatan       String      @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model HistoryPerubahanJadwal {
+  id              Int         @id @default(autoincrement())
+  bimbinganTaId   Int
+  bimbinganTa     BimbinganTa @relation(fields: [bimbinganTaId], references: [id], onDelete: Cascade)
+  mahasiswaId     Int
+  mahasiswa       Mahasiswa   @relation(fields: [mahasiswaId], references: [id], onDelete: Cascade)
+  tanggalLama     DateTime    @db.Date
+  jamLama         DateTime?   @db.Time
+  tanggalBaru     DateTime    @db.Date
+  jamBaru         DateTime?   @db.Time
+  alasanPerubahan String?     @db.Text
+  status          String      @default("menunggu")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model SimilarityCheck {
+  id          Int       @id @default(autoincrement())
+  dokumenTaId Int
+  dokumenTa   DokumenTa @relation(fields: [dokumenTaId], references: [id], onDelete: Cascade)
+  score       Float
+  sources     Json?
+  checkedById Int?
+  checkedBy   User?     @relation(fields: [checkedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model JudulTugasAkhirs {
+  id            Int      @id @default(autoincrement())
+  nim           String?  @db.VarChar(20)
+  namaMahasiswa String?
+  judul         String   @db.Text
+  tahunLulus    Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model FileUploads {
+  id           Int      @id @default(autoincrement())
+  filePath     String
+  originalName String
+  fileType     String?
+  fileableId   Int
+  fileableType String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Log {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  objectType String
+  objectId   Int
+  deskripsi  String   @db.Text
+  createdAt  DateTime @default(now())
+}
