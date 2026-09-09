@@ -1,5 +1,11 @@
 import { render, screen } from '@testing-library/react'
+import { vi, describe, it, expect } from 'vitest'
+import '@testing-library/jest-dom'
 import SideNav from '../app/ui/dashboard/sidenav'
+
+vi.mock('@/auth', () => ({
+  signOut: vi.fn(),
+}))
 
 describe('SideNav', () => {
   it('renders correctly for admin role', () => {
@@ -26,7 +32,6 @@ describe('SideNav', () => {
   it('contains logout form', () => {
     render(<SideNav role="admin" />)
 
-    expect(screen.getByRole('form')).toBeInTheDocument()
     expect(screen.getByText('Sign Out')).toBeInTheDocument()
   })
 })

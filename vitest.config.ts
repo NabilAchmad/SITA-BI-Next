@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import path from 'path'
 
 export default defineConfig({
   test: {
@@ -8,4 +9,9 @@ export default defineConfig({
     exclude: ['node_modules', '.next'],
     transformMode: { normalize: ['resolve-as-entry', 'legacy-head'] },
   },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './')
+    }
+  }
 })
